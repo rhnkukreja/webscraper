@@ -38,6 +38,7 @@ env/
 *.csv
 !example.json
 !example.csv
+page_source.html
 
 # OS
 .DS_Store
