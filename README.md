@@ -1,15 +1,18 @@
 # Google Reviews Scraper
 
-A Python-based web scraper for extracting reviews from Google Business pages (Google Maps). This tool uses Selenium and BeautifulSoup to scrape review data including reviewer names, ratings, review text, dates, and more.
+A Python-based web scraper for extracting reviews and business information from Google Business pages (Google Maps). This tool uses Selenium and BeautifulSoup to scrape comprehensive business data including reviews, ratings, location, contact info, and analytical insights.
 
 ## Features
 
 - 🔍 Scrape reviews from any Google Business page
-- 📊 Export data to JSON and CSV formats
-- 🎯 Customizable scroll depth to load more reviews
+- 📊 Extract business metadata (rating, location, contact, cost)
+- 📅 Find first review date (oldest review)
+- ⚠️ Analyze negative reviews (1-3 stars)
+- 🎯 Get the most recent negative review
+- 💾 Export data to JSON and CSV formats
+- 🔄 Customizable scroll depth to load more reviews
 - 🌐 Support for different languages
 - 👻 Headless and non-headless browser modes
-- 🔄 Automatic scrolling to load more reviews
 - 📝 Expands truncated review text
 - 🛡️ Anti-detection measures
 
@@ -45,18 +48,23 @@ from google_reviews_scraper import GoogleReviewsScraper
 # Initialize scraper
 scraper = GoogleReviewsScraper(headless=True)
 
-# Scrape reviews from a Google Business URL
+# Scrape reviews and business information
 url = "https://www.google.com/maps/place/YourBusinessName/"
-reviews = scraper.scrape(url, max_scrolls=5)
+reviews = scraper.scrape(url, max_scrolls=10)
 
-# Save results
-scraper.save_to_json('reviews.json')
-scraper.save_to_csv('reviews.csv')
+# Save business summary with all key information
+scraper.save_business_summary('business_summary.json')
 
-# Access reviews data
-for review in reviews:
-    print(f"{review['reviewer_name']}: {review['rating']} stars")
-    print(f"{review['review_text']}\n")
+# Optionally save all reviews
+scraper.save_to_json('all_reviews.json')
+scraper.save_to_csv('all_reviews.csv')
+
+# Access business summary programmatically
+summary = scraper.generate_business_summary()
+print(f"Rating: {summary['business_info']['rating']}")
+print(f"Location: {summary['business_info']['location']}")
+print(f"First Review: {summary['reviews_summary']['first_review_date']}")
+print(f"Negative Reviews: {summary['reviews_summary']['total_negative_reviews']}")
 ```
 
 ### Running the Example
@@ -97,12 +105,39 @@ https://www.google.com/maps/place/Business+Name/@latitude,longitude,zoom/
 
 ## Data Structure
 
-Each review contains the following fields:
+### Business Summary Output
 
-```python
+The `business_summary.json` file contains comprehensive business information:
+
+```json
+{
+  "business_info": {
+    "rating": "4.5",
+    "location": "123 Main Street, City, State 12345",
+    "contact_information": "+1 (555) 123-4567",
+    "cost_for_one": "$$"
+  },
+  "reviews_summary": {
+    "total_reviews_scraped": 150,
+    "total_negative_reviews": 12,
+    "first_review_date": "5 years ago",
+    "last_negative_review": {
+      "content": "Service was slow and food was cold...",
+      "date": "2 weeks ago",
+      "rating": 2
+    }
+  }
+}
+```
+
+### Individual Review Structure
+
+Each review in `all_reviews.json` contains:
+
+```json
 {
     "reviewer_name": "John Doe",
-    "rating": "5",
+    "rating": 5,
     "review_text": "Great place! Highly recommended...",
     "review_date": "2 months ago",
     "reviewer_stats": "50 reviews"
@@ -141,15 +176,22 @@ for idx, url in enumerate(urls):
     scraper.save_to_csv(f'reviews_{idx}.csv')
 ```
 
-### Example 4: Filter and Analyze Reviews
+### Example 4: Analyze Negative Reviews
 
 ```python
 scraper = GoogleReviewsScraper(headless=True)
 reviews = scraper.scrape(url, max_scrolls=10)
 
-# Filter 5-star reviews
-five_star = [r for r in reviews if r['rating'] == '5']
-print(f"5-star reviews: {len(five_star)}")
+# Get all negative reviews (1-3 stars)
+negative_reviews = scraper.get_negative_reviews()
+print(f"Total negative reviews: {len(negative_reviews)}")
+
+# Get the most recent negative review
+last_negative = scraper.get_last_negative_review()
+if last_negative:
+    print(f"Last negative review: {last_negative['review_text']}")
+    print(f"Rating: {last_negative['rating']} stars")
+    print(f"Date: {last_negative['review_date']}")
 
 # Filter by keyword
 keyword_reviews = [r for r in reviews if 'excellent' in r['review_text'].lower()]
@@ -158,12 +200,25 @@ print(f"Reviews mentioning 'excellent': {len(keyword_reviews)}")
 
 ## Output Formats
 
-### JSON Format
+The scraper generates three types of output files:
+
+### 1. Business Summary (business_summary.json)
+Contains comprehensive business analytics:
+- Overall rating
+- Business location
+- Contact information
+- Cost for one
+- First review date
+- Total negative reviews count
+- Most recent negative review details
+
+### 2. All Reviews (all_reviews.json)
+Array of all scraped reviews in JSON format:
 ```json
 [
   {
     "reviewer_name": "John Doe",
-    "rating": "5",
+    "rating": 5,
     "review_text": "Amazing service and great atmosphere!",
     "review_date": "3 weeks ago",
     "reviewer_stats": "25 reviews"
@@ -171,7 +226,7 @@ print(f"Reviews mentioning 'excellent': {len(keyword_reviews)}")
 ]
 ```
 
-### CSV Format
+### 3. CSV Format (all_reviews.csv)
 ```
 reviewer_name,rating,review_text,review_date,reviewer_stats
 John Doe,5,Amazing service and great atmosphere!,3 weeks ago,25 reviews
